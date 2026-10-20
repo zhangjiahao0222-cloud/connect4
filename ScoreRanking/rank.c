@@ -1,4 +1,3 @@
-/* Part 3: Score Ranking - win 3 points, draw 1 point (kept only while the program runs) */
 #include <stdio.h>
 #include <string.h>
 #include "../Other/common.h"
@@ -23,7 +22,6 @@ void add_score(char player_name[], int points)
     }
 }
 
-/* bubble sort: higher score first */
 void show_ranking(void)
 {
     int i, j, tmp;
