@@ -1,6 +1,3 @@
-/* Minimal C library for running the game in the browser.
-   Output goes to js_write, input comes from js_getc (which stops the
-   program while it waits for the player to type). */
 #include <stdarg.h>
 #include "stdio.h"
 __attribute__((import_module("env"), import_name("js_write"))) void js_write(const char *p, int n);
@@ -42,7 +39,6 @@ int printf(const char *f, ...) {
   va_end(a); flush(); return 0;
 }
 static int isspace_(int c) { return c == ' ' || c == '\n' || c == '\t' || c == '\r'; }
-/* supports "%d" and "%Ns", the two formats the game uses */
 int scanf(const char *f, ...) {
   va_list a; va_start(a, f); int got = 0;
   for (; *f; f++) {
