@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Connect 4 in C: a two-player terminal game, playable in the browser.">
+<title>Connect 4 in C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: one terminal window on the blue of a Connect Four frame, red and yellow discs as the only accents. Single dark-blue look on purpose. */
+:root{
+  --bg:#0a1847; --panel:#0f2260; --panel2:#152c78; --line:#28418f;
+  --fg:#eef2ff; --muted:#a3b2e0; --gold:#ff5c5c; --x:#ff5c5c; --o:#ffd447; --ok:#7fe0ff; --onacc:#ffffff;
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--mono);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 40px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 20px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,4.6vw,40px);color:var(--fg);margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 .r{color:var(--x)}h1 .y{color:var(--o)}
+.sub{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.5;max-width:60ch}
+.sub a,footer a{color:var(--fg);text-decoration:underline;text-underline-offset:3px}
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);padding:4px;border-radius:8px}
+.tabs button{font:500 13px var(--mono);color:var(--muted);background:none;border:0;padding:7px 14px;border-radius:5px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--panel2);color:var(--gold)}
+.tabs button:focus-visible,.cols button:focus-visible,.btn:focus-visible,#inp:focus-visible,.files button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.term{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 18px 50px #0008}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.dots{display:flex;gap:6px}.dots i{width:11px;height:11px;border-radius:50%;background:#555}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.bar .cmd{margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen{margin:0;padding:16px 18px 6px;height:min(58vh,520px);overflow:auto;font:14px/1.45 var(--mono);white-space:pre;color:var(--fg)}
+#screen .x{color:var(--x);font-weight:600}#screen .o{color:var(--o);font-weight:600}
+#screen .you{color:var(--ok)}#screen .err{color:#ffb0b0}#screen .win{color:var(--o);font-weight:700}
+.prompt{display:flex;align-items:center;gap:8px;padding:8px 18px 14px;border-top:1px dashed var(--line)}
+.prompt label{color:var(--muted);font-size:13px;white-space:nowrap}
+#inp{flex:1;min-width:0;background:transparent;border:0;color:var(--ok);font:500 15px var(--mono);caret-color:var(--gold);padding:6px 0}
+#inp:disabled{opacity:.5}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+[hidden]{display:none!important}
+.cols{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;flex:1 1 300px;min-width:0;max-width:440px}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cols button{font:600 15px var(--mono);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:9px 0;cursor:pointer}
+.cols button:hover{border-color:var(--gold);color:var(--gold)}
+.cols button:disabled{opacity:.35;cursor:default;border-color:var(--line);color:var(--fg)}
+.btn{font:600 13px var(--mono);color:var(--onacc);background:var(--gold);border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
+.btn.ghost{background:none;color:var(--fg);border:1px solid var(--line)}
+.status{font-size:13px;color:var(--muted)}
+.status b{color:var(--o);font-weight:700}
+.code{display:grid;grid-template-columns:210px 1fr;min-height:420px}
+.files{border-right:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:2px;background:var(--panel2)}
+.files button{all:unset;cursor:pointer;font:13px var(--mono);color:var(--muted);padding:7px 10px;border-radius:5px;display:flex;flex-direction:column;gap:2px}
+.files button small{font-size:11px;color:#7f90c4}
+.files button[aria-selected="true"] small{color:var(--muted)}
+.files button[aria-selected="true"]{background:var(--panel);color:var(--gold)}
+.src{min-width:0;overflow:auto}
+.src pre{margin:0;padding:14px 0;font:13px/1.55 var(--mono);counter-reset:ln}
+.src .l{display:block;padding:0 16px 0 0;white-space:pre}
+.src .l::before{counter-increment:ln;content:counter(ln);display:inline-block;width:3.2em;padding-right:1em;text-align:right;color:#5f72b0}
+.k{color:#ff8fa3}.t{color:#7fe0ff}.s{color:#ffd447}.n{color:#b6f09c}.c{color:#8394c9;font-style:italic}.p{color:#ff9e7a}.f{color:#c9b6ff}
+footer{color:var(--muted);font-size:12.5px;line-height:1.6;max-width:70ch}
+footer code{color:var(--fg)}
+@media (max-width:640px){.code{grid-template-columns:1fr}.files{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}#screen{font-size:12.5px;padding:12px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.parts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.parts span{font-size:12px;color:var(--fg);border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px}
+.parts span b{color:var(--o);font-weight:600;margin-right:6px}
+#screen .head{color:var(--ok);font-weight:700}
+</style>
+<style>[hidden]{display:none!important}body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Connect <span class="r">4</span> in <span class="y">C</span></h1>
+      <div class="sub">Our CSCE Laboratory A project: a two-player Connect 4 written in plain C by four people, one part each. The terminal below runs our real C code, compiled to WebAssembly, so it behaves exactly like <code>./connect4</code> on a computer. Source on <a href="https://github.com/zhangjiahao0222-cloud/connect4" target="_blank" rel="noopener">GitHub</a>.</div>
+      <div class="parts"><span><b>1</b>UI</span><span><b>2</b>Basic Function</span><span><b>3</b>Score Ranking</span><span><b>4</b>Other</span></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabPlay" aria-selected="true">Play</button>
+      <button role="tab" id="tabCode" aria-selected="false">Source code</button>
+    </div>
+  </header>
+
+  <section id="play" class="term" aria-label="Game terminal">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="cmd">~/connect4 $ gcc */*.c -o connect4 &amp;&amp; ./connect4</span></div>
+    <pre id="screen" aria-live="polite"></pre>
+    <form class="prompt" id="form" autocomplete="off">
+      <label for="inp">input &gt;</label>
+      <input id="inp" placeholder="type here and press Enter" maxlength="40">
+    </form>
+  </section>
+
+  <div class="controls" id="controls">
+    <div class="cols" id="cols" aria-label="Quick number input"></div>
+    <div class="actions">
+      <span class="status" id="status"></span>
+      <button class="btn ghost" id="quick" type="button">Quick start</button>
+      <button class="btn ghost" id="undo" type="button">Undo</button>
+      <button class="btn" id="reset" type="button">Restart</button>
+    </div>
+  </div>
+
+  <section id="code" class="term" hidden aria-label="Source code">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="cmd" id="codePath"></span></div>
+    <div class="code"><nav class="files" id="files" role="tablist"></nav><div class="src" id="src"></div></div>
+  </section>
+
+  <footer>
+    How to play: choose <code>1</code> in the menu, type two different names, then drop pieces with the number buttons or your keyboard (1–7). After a game, choose <code>2</code> to see the ranking: a win gives 3 points, a draw 1 point each. Try typing <code>abc</code> or <code>9</code> to see the input checks.<br>
+    How it works: the four folders were compiled together with clang to WebAssembly. The page only supplies <code>printf</code>, <code>scanf</code> and <code>getchar</code>; every rule, message and score comes from our C code.
+  </footer>
+</div>
+
+<script>
+const WASM_B64 = "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AEEBDwsCQCABQaiLgIAAai0AACACRw0AIAFBr4uAgABqLQAAIAJHDQAgAUG2i4CAAGotAAAgAkcNACABQb2LgIAAai0AACACRw0AQQEPCwJAIAFBqYuAgABqLQAAIAJHDQAgAUGwi4CAAGotAAAgAkcNACABQbeLgIAAai0AACACRw0AIAFBvouAgABqLQAAIAJHDQBBAQ8LAkAgAUGqi4CAAGotAAAgAkcNACABQbGLgIAAai0AACACRw0AIAFBuIuAgABqLQAAIAJHDQAgAUG/i4CAAGotAAAgAkcNAEEBDwsCQCABQauLgIAAai0AACACRw0AIAFBsouAgABqLQAAIAJHDQAgAUG5i4CAAGotAAAgAkcNACABQcCLgIAAai0AACACRw0AQQEPCyABQQdqIgENAAtBayEBIABB/wFxIQIDQAJAIAFBpYuAgABqLQAAIAJHDQAgAUGti4CAAGotAAAgAkcNACABQbWLgIAAai0AACACRw0AIAFBvYuAgABqLQAAIAJHDQBBAQ8LAkAgAUGmi4CAAGotAAAgAkcNACABQa6LgIAAai0AACACRw0AIAFBtouAgABqLQAAIAJHDQAgAUG+i4CAAGotAAAgAkcNAEEBDwsCQCABQaeLgIAAai0AACACRw0AIAFBr4uAgABqLQAAIAJHDQAgAUG3i4CAAGotAAAgAkcNACABQb+LgIAAai0AACACRw0AQQEPCwJAIAFBqIuAgABqLQAAIAJHDQAgAUGwi4CAAGotAAAgAkcNACABQbiLgIAAai0AACACRw0AIAFBwIuAgABqLQAAIAJHDQBBAQ8LIAFBB2oiAQ0AC0FrIQEgAEH/AXEhAgNAAkAgAUGoi4CAAGotAAAgAkcNACABQa6LgIAAai0AACACRw0AIAFBtIuAgABqLQAAIAJHDQAgAUG6i4CAAGotAAAgAkcNAEEBDwsCQCABQamLgIAAai0AACACRw0AIAFBr4uAgABqLQAAIAJHDQAgAUG1i4CAAGotAAAgAkcNACABQbuLgIAAai0AACACRw0AQQEPCwJAIAFBqouAgABqLQAAIAJHDQAgAUGwi4CAAGotAAAgAkcNACABQbaLgIAAai0AACACRw0AIAFBvIuAgABqLQAAIAJHDQBBAQ8LAkAgAUGri4CAAGotAAAgAkcNACABQbGLgIAAai0AACAC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IABBAWohACACDQALQQAhAgsgAkH/AXEhAgsgAiABLQAAawsqAQJ/QQAhAgNAIAAgAmogASACai0AACIDOgAAIAJBAWohAiADDQALIAALywkBDH8jgICAgABBMGsiAiSAgICAACACIAE2AiwgAkEEakF8aiEDIAJBBGpBf2ohBAN/AkACQAJAAkAgAC0AACIBQSVGDQAgAUUNAQJAQQAoAsiPgIAAIgVBgARHDQBB0I+AgABBgAQQgICAgABBACEFCyAFQdCPgIAAaiABOgAAQQAgBUEBajYCyI+AgAAgAEEBaiEADAQLIABBAmogAEEBaiAALQABQS1GIgYbIQVBACEHAkACQCAAQQJBASAGG2otAAAiAUFQakH/AXFBCU0NACAFIQAMAQtBACEHA0AgB0EKbCABQVBqQf8BcWohByAFLQABIQEgBUEBaiIAIQUgAUFQakH/AXFBCkkNAAsLAkACQAJAIAFB/wFxQZ1/ag4RAQAEBAQEBAQEBAQEBAQEBAIECyACIAIoAiwiAUEEajYCLCABKAIAIgggCEEfdSIBcyABayEBQQAhBUEBIQkDQCACQQRqIAVqIAEgAUEKbiIKQQpsa0EwcjoAACAJIgtBAWohCSAFQQFqIQUgAUEJSyEMIAohASAMDQALQQAhDQJAIAhBf0oNACACQS06ABBBASENCwJAAkAgBUEDcQ0AIAUhCgwBCyALQQNxIQogAkEQaiANciEMQQAhASAEIQkDQCAMIAFqIAkgBWotAAA6AAAgCUF/aiEJIAogAUEBaiIBRw0ACyANIAFqIQ0gBSABayEKCwJAIAVBf2pBA0kNACADIApqIQFBACEJQQAgCmshCiACQRBqIA1qIQwDQCAMIAlqIgUgAUEDai0AADoAACAFQQFqIAFBAmotAAA6AAAgBUECaiABQQFqLQAAOgAAIAVBA2ogAS0AADoAACABQXxqIQEgCiAJQQRqIglqDQALIA0gCWohDQsgAkEQaiANakEAOgAAIAJBEGohBQwECyACIAIoAiwiAUEEajYCLCACQQA6ABEgAiABKAIAOgAQQQEhDSACQRBqIQUMAwsgAiACKAIsIgFBBGo2AiwgASgCACEFQQAhAQNAIAUgAWohCSABQQFqIgohASAJLQAADQALIApBf2ohDQwCCwJAQQAoAsiPgIAAIgFFDQBB0I+AgAAg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ZSAoWCk6IABQbGF5ZXIgMSBuYW1lIChPKTogACVkLiAlLTE1cyAlZCBwb2ludHMKACAgMSAgIDIgICAzICAgNCAgIDUgICA2ICAgNwoAJXMgd2lucyEKAABBiAsLBP7///8AuQIEbmFtZQAIB2M0Lndhc20BgAIZAAhqc193cml0ZQEHanNfZ2V0YwIHanNfZXhpdAMJc2hvd19tZW51BApzaG93X2JvYXJkBQtyZWFkX251bWJlcgYJcmVhZF9uYW1lBwphc2tfY29sdW1uCAtjbGVhcl9ib2FyZAkKZHJvcF9waWVjZQoJY2hlY2tfd2luCwpib2FyZF9mdWxsDAlhZGRfc2NvcmUNDHNob3dfcmFua2luZw4JcGxheV9nYW1lDw9fX29yaWdpbmFsX21haW4QBG1haW4RB2dldGNoYXISB3B1dGNoYXITBHB1dHMUBGV4aXQVBnN0cmNtcBYGc3RyY3B5FwZwcmludGYYBXNjYW5mBxIBAA9fX3N0YWNrX3BvaW50ZXIJEQIABy5yb2RhdGEBBS5kYXRhADgJcHJvZHVjZXJzAQxwcm9jZXNzZWQtYnkBDFVidW50dSBjbGFuZxExOC4xLjMgKDF1YnVudHUxKQAsD3RhcmdldF9mZWF0dXJlcwIrD211dGFibGUtZ2xvYmFscysIc2lnbi1leHQ=";
+const FILES = {};
+const PATHS = ["UI/ui.c", "BasicFunction/game.c", "ScoreRanking/rank.c", "Other/main.c", "Other/common.h"];
+const LABELS = {"Other/main.c": "Part 4 \u00b7 Other", "UI/ui.c": "Part 1 \u00b7 UI", "BasicFunction/game.c": "Part 2 \u00b7 Basic Function", "ScoreRanking/rank.c": "Part 3 \u00b7 Score Ranking", "Other/common.h": "Shared header"};
+const mod = new WebAssembly.Module(Uint8Array.from(atob(WASM_B64), c => c.charCodeAt(0)));
+const STOP = {}, EXIT = {};
+let inputs = [];
+try { inputs = JSON.parse(sessionStorage.getItem('c4c-inputs') || '[]'); } catch (e) {}
+
+function run(lines) {
+  let out = '', mem; const marks = [];
+  const dec = new TextDecoder('latin1');
+  const text = lines.map(l => l + '\n').join('');
+  const starts = new Set(); let acc = 0; lines.forEach(l => { starts.add(acc); acc += l.length + 1; });
+  let i = 0, line = 0;
+  const env = {
+    js_write: (p, n) => { out += dec.decode(new Uint8Array(mem.buffer, p, n)); },
+    js_getc: () => {
+      if (i >= text.length) throw STOP;
+      if (starts.has(i)) { const s = lines[line++] + '\n'; marks.push([out.length, s]); out += s; }  // echo the typed line
+      return text.charCodeAt(i++);
+    },
+    js_exit: () => { throw EXIT; }
+  };
+  const inst = new WebAssembly.Instance(mod, { env }); mem = inst.exports.memory;
+  let done = false;
+  try { inst.exports.main(); done = true; }
+  catch (e) { if (e === EXIT) done = true; else if (e !== STOP) { out += '\n[program error: ' + e.message + ']\n'; done = true; } }
+  return { out, marks, done };
+}
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const ERR = /^(Please enter a number|Column must be 1-7|This column is full|Use a different name|Please choose 1, 2 or 3)/;
+function seg(t) {
+  return t.split('\n').map(line => {
+    if (/^\|/.test(line)) return esc(line).replace(/X/g, '<span class="x">X</span>').replace(/O/g, '<span class="o">O</span>');
+    if (/^=====/.test(line)) return '<span class="head">' + esc(line) + '</span>';
+    if (/ wins!$|^Draw!$/.test(line)) return '<span class="win">' + esc(line) + '</span>';
+    return esc(line).replace(/(Please enter a number|Column must be 1-7\.|This column is full\.|Use a different name|Please choose 1, 2 or 3\.)/, '<span class="err">$1</span>');
+  }).join('\n');
+}
+function paint(out, marks) {
+  let html = '', pos = 0;
+  for (const [at, s] of marks) { html += seg(out.slice(pos, at)) + '<span class="you">' + esc(s) + '</span>'; pos = at + s.length; }
+  return html + seg(out.slice(pos));
+}
+const screen = document.getElementById('screen'), inp = document.getElementById('inp'), statusEl = document.getElementById('status');
+let state = 'menu';
+function render() {
+  const r = run(inputs);
+  screen.innerHTML = paint(r.out, r.marks) + (r.done ? '' : '<span class="you">▍</span>');
+  screen.scrollTop = screen.scrollHeight;
+  inp.disabled = r.done;
+  const tail = r.out.slice(-80);
+  let m;
+  if (r.done) { state = 'end'; statusEl.innerHTML = '<b>Program ended</b>'; }
+  else if ((m = tail.match(/(\S+) \((O|X)\), choose column 1-7: $/))) { state = 'move'; statusEl.innerHTML = 'Turn: <b>' + esc(m[1]) + ' (' + m[2] + ')</b>'; }
+  else if (/Choose: $/.test(tail)) { state = 'menu'; statusEl.innerHTML = 'Menu: <b>1</b> play · <b>2</b> ranking · <b>3</b> exit'; }
+  else if (/Player 1 name \(O\): $/.test(tail)) { state = 'name'; statusEl.innerHTML = 'Type <b>player 1</b> name'; }
+  else if (/Player 2 name \(X\): $|Use a different name: $/.test(tail)) { state = 'name'; statusEl.innerHTML = 'Type <b>player 2</b> name'; }
+  else { state = 'other'; statusEl.textContent = ''; }
+  inp.inputMode = state === 'name' ? 'text' : 'numeric';
+  document.querySelectorAll('#cols button').forEach(b => b.disabled = r.done || state === 'name');
+  document.getElementById('quick').disabled = state !== 'menu';
+  document.getElementById('undo').disabled = !inputs.length;
+  try { sessionStorage.setItem('c4c-inputs', JSON.stringify(inputs)); } catch (e) {}
+}
+function send(...vals) { inputs.push(...vals.map(String)); render(); }
+const cols = document.getElementById('cols');
+for (let c = 1; c <= 7; c++) { const b = document.createElement('button'); b.type = 'button'; b.textContent = c; b.setAttribute('aria-label', 'Type ' + c); b.onclick = () => send(c); cols.appendChild(b); }
+document.getElementById('form').addEventListener('submit', e => { e.preventDefault(); send(inp.value); inp.value = ''; });
+document.getElementById('reset').onclick = () => { inputs = []; render(); };
+document.getElementById('undo').onclick = () => { inputs.pop(); render(); };
+document.getElementById('quick').onclick = () => send('1', 'Alice', 'Bob');
+document.addEventListener('keydown', e => {
+  if (document.getElementById('play').hidden || e.target === inp || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/^[1-7]$/.test(e.key) && !inp.disabled && state !== 'name') send(e.key);
+});
+
+/* source viewer */
+function hl(code) {
+  const re = /(\/\*.*?\*\/|\/\*.*$|^\s*\*.*$|^\s*#\w+.*$|"(?:\\.|[^"])*"|'(?:\\.|[^'])'|\b\d+\b|\b(?:if|else|for|while|return|break|continue|sizeof|extern)\b|\b(?:void|int|char)\b|\b[A-Za-z_]\w*(?=\s*\())/g;
+  return code.split('\n').map(line => {
+    let h = '', last = 0, m; re.lastIndex = 0;
+    while ((m = re.exec(line))) {
+      const t = m[0]; if (!t.length) { re.lastIndex++; continue; }
+      h += esc(line.slice(last, m.index)); let cls;
+      if (/^\s*(\/\*|\*)/.test(t)) cls = 'c'; else if (/^\s*#/.test(t)) cls = 'p'; else if (/^["']/.test(t)) cls = 's';
+      else if (/^\d/.test(t)) cls = 'n'; else if (/^(void|int|char)$/.test(t)) cls = 't';
+      else if (/^(if|else|for|while|return|break|continue|sizeof|extern)$/.test(t)) cls = 'k'; else cls = 'f';
+      h += '<span class="' + cls + '">' + esc(t) + '</span>'; last = m.index + t.length;
+    }
+    return '<span class="l">' + h + esc(line.slice(last)) + '</span>';
+  }).join('');
+}
+const filesNav = document.getElementById('files'), src = document.getElementById('src');
+function showFile(p) {
+  filesNav.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', b.dataset.p === p));
+  document.getElementById('codePath').textContent = '~/connect4/' + p;
+  const txt = FILES[p];
+  src.innerHTML = txt == null ? '<pre><span class="l">Loading ' + esc(p) + ' ...</span></pre>' : '<pre>' + hl(txt.replace(/\s+$/, '')) + '</pre>'; src.scrollTop = 0;
+}
+PATHS.forEach(p => {
+  const b = document.createElement('button'); b.dataset.p = p; b.setAttribute('role', 'tab');
+  b.innerHTML = esc(p) + '<small>' + esc(LABELS[p]) + '</small>'; b.onclick = () => showFile(p); filesNav.appendChild(b);
+});
+let current = 'Other/main.c';
+showFile(current);
+filesNav.addEventListener('click', e => { const b = e.target.closest('button'); if (b) current = b.dataset.p; });
+Promise.all(PATHS.map(p => fetch(p).then(r => { if (!r.ok) throw 0; return r.text(); }).then(t => { FILES[p] = t; })))
+  .then(() => showFile(current))
+  .catch(() => { src.innerHTML = '<pre><span class="l">Open this page from the website to load the source, or read it on GitHub.</span></pre>'; });
+function tab(which) {
+  const play = which === 'play';
+  document.getElementById('play').hidden = !play; document.getElementById('controls').hidden = !play;
+  document.getElementById('code').hidden = play;
+  document.getElementById('tabPlay').setAttribute('aria-selected', play); document.getElementById('tabCode').setAttribute('aria-selected', !play);
+}
+document.getElementById('tabPlay').onclick = () => tab('play');
+document.getElementById('tabCode').onclick = () => tab('code');
+if (location.hash === '#code') tab('code');
+render();
+</script>
+
+</body>
+</html>
