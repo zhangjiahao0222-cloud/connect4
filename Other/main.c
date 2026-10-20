@@ -1,4 +1,3 @@
-/* Part 4: Other - main menu and the game loop (Exercise 4) */
 #include <stdio.h>
 #include <string.h>
 #include "common.h"
