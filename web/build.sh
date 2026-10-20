@@ -1,5 +1,4 @@
 #!/bin/sh
-# Rebuild connect4.wasm from the four folders (needs clang with the wasm32 target).
 cd "$(dirname "$0")/.."
 clang --target=wasm32 -O2 -nostdlib -isystem web \
   -Wl,--no-entry -Wl,--export=main -Wl,-z,stack-size=65536 \
