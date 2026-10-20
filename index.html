@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
-/* Layout: one terminal window on the blue of a Connect Four frame, red and yellow discs as the only accents. Single dark-blue look on purpose. */
 :root{
   --bg:#0a1847; --panel:#0f2260; --panel2:#152c78; --line:#28418f;
   --fg:#eef2ff; --muted:#a3b2e0; --gold:#ff5c5c; --x:#ff5c5c; --o:#ffd447; --ok:#7fe0ff; --onacc:#ffffff;
@@ -139,7 +138,7 @@ function run(lines) {
     js_write: (p, n) => { out += dec.decode(new Uint8Array(mem.buffer, p, n)); },
     js_getc: () => {
       if (i >= text.length) throw STOP;
-      if (starts.has(i)) { const s = lines[line++] + '\n'; marks.push([out.length, s]); out += s; }  // echo the typed line
+      if (starts.has(i)) { const s = lines[line++] + '\n'; marks.push([out.length, s]); out += s; }
       return text.charCodeAt(i++);
     },
     js_exit: () => { throw EXIT; }
@@ -198,7 +197,6 @@ document.addEventListener('keydown', e => {
   if (/^[1-7]$/.test(e.key) && !inp.disabled && state !== 'name') send(e.key);
 });
 
-/* source viewer */
 function hl(code) {
   const re = /(\/\*.*?\*\/|\/\*.*$|^\s*\*.*$|^\s*#\w+.*$|"(?:\\.|[^"])*"|'(?:\\.|[^'])'|\b\d+\b|\b(?:if|else|for|while|return|break|continue|sizeof|extern)\b|\b(?:void|int|char)\b|\b[A-Za-z_]\w*(?=\s*\())/g;
   return code.split('\n').map(line => {
