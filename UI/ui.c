@@ -1,4 +1,3 @@
-/* Part 1: UI - everything printed on the screen and read from the keyboard */
 #include <stdio.h>
 #include <stdlib.h>
 #include "../Other/common.h"
@@ -26,7 +25,6 @@ void show_board(void)
     printf("  1   2   3   4   5   6   7\n\n");
 }
 
-/* reads a number; if the user types letters, ask again */
 int read_number(void)
 {
     int x, result, c;
@@ -42,7 +40,6 @@ int read_number(void)
     }
 }
 
-/* reads one word (max 19 letters) and throws away the rest of the line */
 void read_name(char n[])
 {
     int c;
@@ -52,7 +49,6 @@ void read_name(char n[])
         ;
 }
 
-/* returns a column 0-6 that is not full */
 int ask_column(int player)
 {
     int col;
